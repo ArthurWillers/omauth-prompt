@@ -1,9 +1,9 @@
 # omauth-prompt
 
-`omauth-prompt` is a small, theme-aware authentication surface for Omarchy.
-It keeps the visual prompt inside the existing long-running `omarchy-shell`
-process and lets command-line adapters exchange the secret through a private
-file in `$XDG_RUNTIME_DIR`.
+`omauth-prompt` is a theme-aware authentication surface for Omarchy. It keeps
+the visual prompt inside the existing long-running `omarchy-shell` process and
+lets command-line adapters exchange the secret through a private file in
+`$XDG_RUNTIME_DIR`.
 
 The first release includes adapters for:
 
@@ -25,7 +25,18 @@ omarchy plugin add https://github.com/ArthurWillers/omauth-prompt.git --enable
 Third-party plugins run as unsandboxed code inside `omarchy-shell`. Review the
 repository before enabling it, especially because this plugin handles secrets.
 
-## GnuPG
+Setup is intentionally explicit: installing the plugin does not silently edit
+your GnuPG configuration. Run the setup command below only if you want to use
+omauth-prompt as your GnuPG pinentry.
+
+## Requirements
+
+- Omarchy Quattro with third-party shell plugins enabled
+- GnuPG and `gpg-agent` for the pinentry adapter
+- OpenSSH for the optional `SSH_ASKPASS` adapter
+- `jq` and Python 3, which are used by the included adapters
+
+## GnuPG pinentry
 
 Point GnuPG at the adapter installed with the plugin:
 
@@ -39,7 +50,7 @@ standard Assuan protocol and preserves GnuPG's normal cancellation and timeout
 behavior. Setup is idempotent, backs up `gpg-agent.conf` before changing it,
 and refuses to overwrite a different existing `pinentry-program` entry.
 
-## SSH
+## SSH askpass
 
 For commands that need an interactive SSH password or key passphrase, point
 `SSH_ASKPASS` at the included adapter and force OpenSSH to use it when no TTY
@@ -53,6 +64,16 @@ export SSH_ASKPASS_REQUIRE=force
 For a persistent setup, place those exports in the environment that launches
 the relevant application or service. SSH agents are usually preferable for
 keys; the adapter is for callers that genuinely need a prompt.
+
+## Updating
+
+Omarchy installs plugins as git checkouts. Update the plugin and restart the
+shell so already-loaded QML uses the new checkout:
+
+```bash
+omarchy plugin update io.github.arthurwillers.omauth-prompt --yes
+omarchy restart shell
+```
 
 ## Generic adapter contract
 
@@ -116,12 +137,12 @@ from that profile. For the current shell only:
 unset SSH_ASKPASS SSH_ASKPASS_REQUIRE
 ```
 
-## Scope
+## Limitations
 
 This plugin is an authentication prompt surface, not a replacement for every
-authentication backend. Polkit already has its own Omarchy agent and `sudo`
-normally expects a terminal/PAM conversation; replacing either globally would
-require a separate integration and would risk competing authentication agents.
+authentication backend. Polkit already has its own Omarchy agent, and `sudo`
+normally expects a terminal/PAM conversation. Replacing either globally would
+require a separate integration and could create competing authentication agents.
 
 ## Development
 
@@ -130,7 +151,9 @@ Validate the plugin against the installed Omarchy shell sources:
 ```bash
 omarchy plugin validate .
 qmllint -I "$OMARCHY_PATH/shell" AuthPrompt.qml PasswordPrompt.qml
-bash -n bin/pinentry-omauth bin/omauth-askpass lib/omauth-bridge.sh
+bash -n bin/omauth-prompt bin/pinentry-omauth bin/omauth-askpass lib/omauth-bridge.sh
+test/adapters-test.sh
+test/command-test.sh
 ```
 
 ## License

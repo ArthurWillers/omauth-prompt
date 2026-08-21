@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: bash -n bin/omauth-prompt bin/pinentry-omauth bin/omauth-askpass lib/omauth-bridge.sh
+
+      - name: Test adapters
+        run: test/adapters-test.sh
+
+      - name: Test setup commands
+        run: test/command-test.sh
