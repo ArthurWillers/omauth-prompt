@@ -5,7 +5,7 @@
 
 set -o pipefail
 
-readonly OMAUTH_PLUGIN_ID="omauth-prompt"
+readonly OMAUTH_PLUGIN_ID="io.github.arthurwillers.omauth-prompt"
 OMA_AUTH_SHELL_BINARY=""
 OMA_AUTH_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
 OMA_AUTH_REQUEST_DIR=""

@@ -142,7 +142,7 @@ while IFS= read -r line; do
     GETINFO)
       case "$argument" in
         version) printf 'D 1.0.0\nOK\n' ;;
-        flavor) printf 'D omauth-prompt\nOK\n' ;;
+        flavor) printf 'D io.github.arthurwillers.omauth-prompt\nOK\n' ;;
         pid) printf 'D %s\nOK\n' "$$" ;;
         *) printf 'OK\n' ;;
       esac

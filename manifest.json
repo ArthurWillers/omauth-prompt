@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "omauth-prompt",
+  "id": "io.github.arthurwillers.omauth-prompt",
   "name": "Omarchy Auth Prompt",
   "version": "0.1.0",
   "author": "Arthur Willers",

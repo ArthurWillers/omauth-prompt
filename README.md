@@ -31,7 +31,7 @@ Point GnuPG at the adapter installed with the plugin:
 
 ```bash
 mkdir -p "$HOME/.gnupg"
-pinentry="$HOME/.config/omarchy/plugins/omauth-prompt/bin/pinentry-omauth"
+pinentry="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt/bin/pinentry-omauth"
 grep -Fqx "pinentry-program $pinentry" "$HOME/.gnupg/gpg-agent.conf" 2>/dev/null \
   || printf 'pinentry-program %s\n' "$pinentry" >> "$HOME/.gnupg/gpg-agent.conf"
 gpgconf --kill gpg-agent
@@ -48,7 +48,7 @@ For commands that need an interactive SSH password or key passphrase, point
 is available:
 
 ```bash
-export SSH_ASKPASS="$HOME/.config/omarchy/plugins/omauth-prompt/bin/omauth-askpass"
+export SSH_ASKPASS="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt/bin/omauth-askpass"
 export SSH_ASKPASS_REQUIRE=force
 ```
 
@@ -61,7 +61,7 @@ keys; the adapter is for callers that genuinely need a prompt.
 Adapters call the already-loaded panel through Omarchy shell IPC:
 
 ```bash
-omarchy-shell shell call omauth-prompt open "$payload"
+omarchy-shell shell call io.github.arthurwillers.omauth-prompt open "$payload"
 ```
 
 The JSON payload is:
@@ -91,10 +91,10 @@ argument, environment variable, log, clipboard, or command line.
 
 ```bash
 omarchy plugin list
-omarchy plugin update omauth-prompt
-omarchy plugin disable omauth-prompt
-omarchy plugin enable omauth-prompt
-omarchy plugin remove omauth-prompt
+omarchy plugin update io.github.arthurwillers.omauth-prompt
+omarchy plugin disable io.github.arthurwillers.omauth-prompt
+omarchy plugin enable io.github.arthurwillers.omauth-prompt
+omarchy plugin remove io.github.arthurwillers.omauth-prompt
 ```
 
 Removing the plugin does not change GnuPG configuration. If it was configured
