@@ -10,6 +10,10 @@ The first release includes adapters for:
 - GnuPG's Assuan `pinentry` protocol (`bin/pinentry-omauth`)
 - OpenSSH's `SSH_ASKPASS` protocol (`bin/omauth-askpass`)
 
+It also includes a terminal-native setup wizard powered by Omarchy's existing
+`gum` dependency. The wizard runs in the terminal where it is started; it
+does not open a floating terminal and never needs `pkexec`.
+
 The UI is intentionally independent of both. A future adapter only needs to
 send a request to the `omauth-prompt` panel and read its JSON response.
 
@@ -26,8 +30,8 @@ Third-party plugins run as unsandboxed code inside `omarchy-shell`. Review the
 repository before enabling it, especially because this plugin handles secrets.
 
 Setup is intentionally explicit: installing the plugin does not silently edit
-your GnuPG configuration. Run the setup command below only if you want to use
-omauth-prompt as your GnuPG pinentry.
+your GnuPG configuration, shell environment, or sudo behavior. Run the setup
+wizard only for the integrations you want to use.
 
 ## Requirements
 
@@ -35,13 +39,40 @@ omauth-prompt as your GnuPG pinentry.
 - GnuPG and `gpg-agent` for the pinentry adapter
 - OpenSSH for the optional `SSH_ASKPASS` adapter
 - `jq` and Python 3, which are used by the included adapters
+- `gum`, included with Omarchy, for the interactive setup wizard
+
+## Terminal setup wizard
+
+The plugin cannot add a new top-level `omarchy` command because Omarchy plugins
+are loaded by the shell rather than installed into `/usr/share/omarchy/bin`.
+Run the helper directly in your current terminal:
+
+```bash
+plugin_id="io.github.arthurwillers.omauth-prompt"
+plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
+"$plugin_dir/bin/omauth-prompt" setup
+```
+
+The wizard lets you select GnuPG/PGP, SSH/Git askpass, and optional sudo
+askpass support. Non-interactive variants are available for scripts:
+
+```bash
+"$plugin_dir/bin/omauth-prompt" setup --gpg
+"$plugin_dir/bin/omauth-prompt" setup --askpass
+"$plugin_dir/bin/omauth-prompt" setup --sudo
+"$plugin_dir/bin/omauth-prompt" setup --all
+```
+
+The setup only changes user-owned files. It does not use `pkexec`, request root
+access, or silently enable graphical sudo authentication.
 
 ## GnuPG pinentry
 
-Point GnuPG at the adapter installed with the plugin:
+The wizard can point GnuPG at the adapter installed with the plugin. The
+non-interactive equivalent is:
 
 ```bash
-omarchy-shell omauth setup
+"$plugin_dir/bin/omauth-prompt" setup-gpg
 ```
 
 The existing `gpg-agent` starts the adapter on demand. The adapter speaks the
@@ -51,18 +82,17 @@ and refuses to overwrite a different existing `pinentry-program` entry.
 
 ## SSH askpass
 
-For commands that need an interactive SSH password or key passphrase, point
-`SSH_ASKPASS` at the included adapter and force OpenSSH to use it when no TTY
-is available:
+The wizard writes a sourceable environment file for commands that need an
+interactive SSH password, key passphrase, or Git credential:
 
 ```bash
-export SSH_ASKPASS="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt/bin/omauth-askpass"
-export SSH_ASKPASS_REQUIRE=force
+source "$HOME/.config/omauth-prompt/env"
 ```
 
-For a persistent setup, place those exports in the environment that launches
-the relevant application or service. SSH agents are usually preferable for
-keys; the adapter is for callers that genuinely need a prompt.
+This enables `SSH_ASKPASS`, `GIT_ASKPASS`, and their corresponding settings.
+The optional sudo integration adds `SUDO_ASKPASS`; use it explicitly with
+`sudo -A command`. SSH agents are usually preferable for keys, and the
+askpass adapter is for callers that genuinely need a prompt.
 
 ## Updating
 
@@ -105,16 +135,18 @@ or a cancellation response. The path and its parent directory should be
 private (`0700` directory, `0600` file). Never put the secret in an IPC
 argument, environment variable, log, clipboard, or command line.
 
-## Omarchy commands
+## Plugin commands
 
 ```bash
+plugin_id="io.github.arthurwillers.omauth-prompt"
+plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
+
 omarchy plugin list
 omarchy plugin update io.github.arthurwillers.omauth-prompt
 omarchy plugin disable io.github.arthurwillers.omauth-prompt
 omarchy plugin enable io.github.arthurwillers.omauth-prompt
-omarchy-shell omauth setup
-omarchy-shell omauth status
-omarchy-shell omauth remove
+"$plugin_dir/bin/omauth-prompt" status
+"$plugin_dir/bin/omauth-prompt" doctor
 ```
 
 ## Remove
@@ -128,23 +160,24 @@ plugin_id="io.github.arthurwillers.omauth-prompt"
 plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
 
 omarchy plugin disable "$plugin_id" 2>/dev/null || true
-omarchy-shell omauth remove
+"$plugin_dir/bin/omauth-prompt" remove-gpg
+"$plugin_dir/bin/omauth-prompt" remove-askpass
 omarchy plugin remove "$plugin_id"
 ```
 
-If you exported the SSH adapter in a shell profile, remove those two exports
-from that profile. For the current shell only:
+If you sourced the generated environment file in a shell profile, remove that
+source line from the profile. For the current shell only:
 
 ```bash
-unset SSH_ASKPASS SSH_ASKPASS_REQUIRE
+unset SSH_ASKPASS SSH_ASKPASS_REQUIRE GIT_ASKPASS GIT_TERMINAL_PROMPT SUDO_ASKPASS
 ```
 
 ## Limitations
 
 This plugin is an authentication prompt surface, not a replacement for every
 authentication backend. Polkit already has its own Omarchy agent, and `sudo`
-normally expects a terminal/PAM conversation. Replacing either globally would
-require a separate integration and could create competing authentication agents.
+normally expects a terminal/PAM conversation. The optional `SUDO_ASKPASS`
+integration is opt-in and only applies when a command uses `sudo -A`.
 
 ## Development
 
