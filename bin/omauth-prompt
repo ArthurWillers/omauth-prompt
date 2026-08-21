@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Explicit setup helpers for the optional GnuPG integration.
+
+set -euo pipefail
+umask 077
+
+readonly PLUGIN_ID="io.github.arthurwillers.omauth-prompt"
+readonly CONFIG_PATH="${GNUPGHOME:-$HOME/.gnupg}/gpg-agent.conf"
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+readonly PINENTRY_PATH="$script_dir/pinentry-omauth"
+
+usage() {
+  cat <<'EOF'
+Usage: omauth-prompt <command>
+
+Commands:
+  setup-gpg   Configure GnuPG to use omauth-prompt's pinentry adapter
+  remove-gpg  Remove only omauth-prompt's GnuPG configuration
+  status      Show whether GnuPG is configured for omauth-prompt
+EOF
+}
+
+backup_config() {
+  local backup
+  [[ -f "$CONFIG_PATH" ]] || return 0
+  backup=$(mktemp "$CONFIG_PATH.bak.XXXXXXXX")
+  cp -- "$CONFIG_PATH" "$backup"
+  printf 'Backup: %s\n' "$backup"
+}
+
+ensure_config_file() {
+  mkdir -p -- "$(dirname -- "$CONFIG_PATH")"
+  if [[ ! -e "$CONFIG_PATH" ]]; then
+    : >"$CONFIG_PATH"
+    chmod 600 "$CONFIG_PATH"
+  fi
+}
+
+setup_gpg() {
+  [[ -x "$PINENTRY_PATH" ]] || {
+    printf 'Pinentry adapter is missing or not executable: %s\n' "$PINENTRY_PATH" >&2
+    exit 1
+  }
+
+  ensure_config_file
+  local line="pinentry-program $PINENTRY_PATH"
+
+  if grep -Fqx "$line" "$CONFIG_PATH" 2>/dev/null; then
+    printf 'GnuPG is already configured for omauth-prompt.\n'
+  else
+    if grep -Eq '^[[:space:]]*pinentry-program[[:space:]]+' "$CONFIG_PATH"; then
+      printf 'gpg-agent.conf already contains another pinentry-program.\n' >&2
+      printf 'Review it manually before choosing omauth-prompt: %s\n' "$CONFIG_PATH" >&2
+      exit 2
+    fi
+    backup_config
+    printf '\n# omauth-prompt (%s)\n%s\n' "$PLUGIN_ID" "$line" >>"$CONFIG_PATH"
+    printf 'Configured GnuPG to use omauth-prompt.\n'
+  fi
+
+  gpgconf --kill gpg-agent
+  printf 'Restarted gpg-agent.\n'
+}
+
+remove_gpg() {
+  local line="pinentry-program $PINENTRY_PATH"
+  if [[ ! -f "$CONFIG_PATH" ]] || ! grep -Fqx "$line" "$CONFIG_PATH" 2>/dev/null; then
+    printf 'omauth-prompt is not configured in %s.\n' "$CONFIG_PATH"
+    gpgconf --kill gpg-agent
+    return 0
+  fi
+
+  backup_config
+  local temporary
+  temporary=$(mktemp)
+  awk -v line="$line" '$0 != line' "$CONFIG_PATH" >"$temporary"
+  chmod --reference="$CONFIG_PATH" "$temporary"
+  mv -- "$temporary" "$CONFIG_PATH"
+  gpgconf --kill gpg-agent
+  printf 'Removed omauth-prompt from GnuPG configuration.\n'
+  printf 'Restarted gpg-agent.\n'
+}
+
+status() {
+  if [[ -f "$CONFIG_PATH" ]] && grep -Fqx "pinentry-program $PINENTRY_PATH" "$CONFIG_PATH" 2>/dev/null; then
+    printf 'configured\n'
+  else
+    printf 'not configured\n'
+  fi
+}
+
+case "${1:-}" in
+  setup-gpg) setup_gpg ;;
+  remove-gpg) remove_gpg ;;
+  status) status ;;
+  -h|--help|"") usage ;;
+  *) usage >&2; exit 2 ;;
+esac

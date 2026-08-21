@@ -30,16 +30,14 @@ repository before enabling it, especially because this plugin handles secrets.
 Point GnuPG at the adapter installed with the plugin:
 
 ```bash
-mkdir -p "$HOME/.gnupg"
-pinentry="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt/bin/pinentry-omauth"
-grep -Fqx "pinentry-program $pinentry" "$HOME/.gnupg/gpg-agent.conf" 2>/dev/null \
-  || printf 'pinentry-program %s\n' "$pinentry" >> "$HOME/.gnupg/gpg-agent.conf"
-gpgconf --kill gpg-agent
+plugin_dir="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt"
+"$plugin_dir/bin/omauth-prompt" setup-gpg
 ```
 
 The existing `gpg-agent` starts the adapter on demand. The adapter speaks the
 standard Assuan protocol and preserves GnuPG's normal cancellation and timeout
-behavior.
+behavior. Setup is idempotent, backs up `gpg-agent.conf` before changing it,
+and refuses to overwrite a different existing `pinentry-program` entry.
 
 ## SSH
 
@@ -94,12 +92,29 @@ omarchy plugin list
 omarchy plugin update io.github.arthurwillers.omauth-prompt
 omarchy plugin disable io.github.arthurwillers.omauth-prompt
 omarchy plugin enable io.github.arthurwillers.omauth-prompt
-omarchy plugin remove io.github.arthurwillers.omauth-prompt
 ```
 
-Removing the plugin does not change GnuPG configuration. If it was configured
-as the pinentry, remove that exact `pinentry-program .../pinentry-omauth` line
-and run `gpgconf --kill gpg-agent` before removing the plugin.
+## Remove
+
+If GnuPG is using the adapter, remove its configuration before removing the
+plugin. The plugin includes an explicit cleanup command that preserves a
+backup and removes only its own exact line:
+
+```bash
+plugin_id="io.github.arthurwillers.omauth-prompt"
+plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
+
+omarchy plugin disable "$plugin_id" 2>/dev/null || true
+"$plugin_dir/bin/omauth-prompt" remove-gpg
+omarchy plugin remove "$plugin_id"
+```
+
+If you exported the SSH adapter in a shell profile, remove those two exports
+from that profile. For the current shell only:
+
+```bash
+unset SSH_ASKPASS SSH_ASKPASS_REQUIRE
+```
 
 ## Scope
 
