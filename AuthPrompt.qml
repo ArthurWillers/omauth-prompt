@@ -140,7 +140,7 @@ Item {
 
     Rectangle {
       anchors.fill: parent
-      color: Color.polkit.scrim
+      color: Util.alpha(Color.polkit.scrim, 0.78)
     }
 
     MouseArea {

@@ -35,7 +35,24 @@ Item {
     Style.space(312),
     Math.max(Style.space(260), availableWidth - Style.gapsOut * 2)
   )
-  readonly property int labelHeight: message.length > 0 ? Style.space(28) : 0
+  readonly property int messagePaddingHorizontal: Style.space(12)
+  readonly property int messagePaddingVertical: Style.space(8)
+  readonly property int messageMaxWidth: Math.max(
+    Style.space(280),
+    availableWidth - Style.gapsOut * 2
+  )
+  readonly property int messageWidth: message.length > 0
+    ? Math.min(
+        messageMeasure.implicitWidth + messagePaddingHorizontal * 2,
+        messageMaxWidth
+      )
+    : 0
+  readonly property int labelHeight: message.length > 0
+    ? Math.max(
+        Style.space(28),
+        messageText.implicitHeight + messagePaddingVertical * 2
+      )
+    : 0
   readonly property int labelMargin: message.length > 0 ? Style.space(10) : 0
 
   implicitWidth: cardWidth
@@ -128,10 +145,9 @@ Item {
             ? root.errorMessage
             : (root.submitted ? root.checkingMessage : root.inputPlaceholder)
           color: root.error ? Color.polkit.textError : Color.polkit.text
-          opacity: root.error ? 1 : 0.36
+          opacity: root.error ? 1 : 0.5
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.iconLarge
-          elide: Text.ElideRight
           visible: passwordInput.text.length === 0
         }
 
@@ -158,28 +174,40 @@ Item {
     }
   }
 
+  Text {
+    id: messageMeasure
+    visible: false
+    text: root.message
+    font.family: Style.font.menuFamily
+    font.pixelSize: Style.font.bodySmall
+    wrapMode: Text.NoWrap
+  }
+
   Rectangle {
     visible: root.message.length > 0
-    width: Math.min(messageText.implicitWidth + Style.space(24), root.availableWidth - Style.gapsOut * 2)
+    width: root.messageWidth
     height: root.labelHeight
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: card.top
     anchors.bottomMargin: root.labelMargin
     radius: Style.cornerRadius
-    color: Color.polkit.background
+    color: Util.alpha(Color.polkit.background, 0.98)
 
     Text {
       id: messageText
       anchors.fill: parent
-      anchors.leftMargin: Style.space(12)
-      anchors.rightMargin: Style.space(12)
+      anchors.leftMargin: root.messagePaddingHorizontal
+      anchors.rightMargin: root.messagePaddingHorizontal
+      anchors.topMargin: root.messagePaddingVertical
+      anchors.bottomMargin: root.messagePaddingVertical
       text: root.message
       color: root.error ? Color.polkit.textError : Color.polkit.text
       font.family: Style.font.menuFamily
       font.pixelSize: Style.font.bodySmall
       horizontalAlignment: Text.AlignHCenter
       verticalAlignment: Text.AlignVCenter
-      elide: Text.ElideMiddle
+      wrapMode: Text.Wrap
+      textFormat: Text.PlainText
     }
   }
 
