@@ -22,6 +22,36 @@ Item {
   property int timeoutMs: 120000
 
   readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR")
+  readonly property string homeDir: Quickshell.env("HOME")
+  readonly property string pluginDir: root.manifest && root.manifest.__sourceDir
+    ? String(root.manifest.__sourceDir)
+    : ""
+  readonly property string cliPath: root.homeDir + "/.local/bin/omauth-prompt"
+
+  function installCli() {
+    if (!root.pluginDir || !root.homeDir) return "plugin path unavailable"
+
+    var source = root.pluginDir + "/bin/omauth-prompt"
+    var command = "if [ -e " + Util.shellQuote(root.cliPath)
+      + " ] || [ -L " + Util.shellQuote(root.cliPath) + " ]; then "
+      + "if [ -L " + Util.shellQuote(root.cliPath) + " ] && [ \"$(readlink -f -- "
+      + Util.shellQuote(root.cliPath) + ")\" = " + Util.shellQuote(source) + " ]; then exit 0; fi; "
+      + "exit 2; fi; mkdir -p -- " + Util.shellQuote(root.homeDir + "/.local/bin")
+      + " && ln -s -- " + Util.shellQuote(source) + " " + Util.shellQuote(root.cliPath)
+    Util.execDetached(command)
+    return "started"
+  }
+
+  function uninstallCli() {
+    if (!root.pluginDir || !root.homeDir) return "plugin path unavailable"
+
+    var source = root.pluginDir + "/bin/omauth-prompt"
+    var command = "if [ -L " + Util.shellQuote(root.cliPath) + " ] && [ \"$(readlink -f -- "
+      + Util.shellQuote(root.cliPath) + ")\" = " + Util.shellQuote(source) + " ]; then rm -- "
+      + Util.shellQuote(root.cliPath) + "; fi"
+    Util.execDetached(command)
+    return "started"
+  }
 
   function validResponsePath(path) {
     var value = String(path || "")
@@ -96,6 +126,8 @@ Item {
 
     function prompt(payloadJson: string): string { return root.open(payloadJson) }
     function cancel(): string { return root.close() }
+    function install(): string { return root.installCli() }
+    function uninstall(): string { return root.uninstallCli() }
   }
 
   Timer {

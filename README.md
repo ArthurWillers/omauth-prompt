@@ -45,22 +45,27 @@ wizard only for the integrations you want to use.
 
 The plugin cannot add a new top-level `omarchy` command because Omarchy plugins
 are loaded by the shell rather than installed into `/usr/share/omarchy/bin`.
-Run the helper directly in your current terminal:
+Install the short launcher once through the shell IPC:
 
 ```bash
-plugin_id="io.github.arthurwillers.omauth-prompt"
-plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
-"$plugin_dir/bin/omauth-prompt" setup
+omarchy-shell omauth install
 ```
 
-The wizard lets you select GnuPG/PGP, SSH/Git askpass, and optional sudo
-askpass support. Non-interactive variants are available for scripts:
+After that, use the short command directly in your current terminal. The
+wizard lets you select GnuPG/PGP, SSH/Git askpass, and optional sudo askpass
+support:
 
 ```bash
-"$plugin_dir/bin/omauth-prompt" setup --gpg
-"$plugin_dir/bin/omauth-prompt" setup --askpass
-"$plugin_dir/bin/omauth-prompt" setup --sudo
-"$plugin_dir/bin/omauth-prompt" setup --all
+omauth-prompt setup
+```
+
+Non-interactive variants are available for scripts:
+
+```bash
+omauth-prompt setup --gpg
+omauth-prompt setup --askpass
+omauth-prompt setup --sudo
+omauth-prompt setup --all
 ```
 
 The setup only changes user-owned files. It does not use `pkexec`, request root
@@ -145,8 +150,9 @@ omarchy plugin list
 omarchy plugin update io.github.arthurwillers.omauth-prompt
 omarchy plugin disable io.github.arthurwillers.omauth-prompt
 omarchy plugin enable io.github.arthurwillers.omauth-prompt
-"$plugin_dir/bin/omauth-prompt" status
-"$plugin_dir/bin/omauth-prompt" doctor
+omarchy-shell omauth install
+omauth-prompt status
+omauth-prompt doctor
 ```
 
 ## Remove
@@ -160,8 +166,9 @@ plugin_id="io.github.arthurwillers.omauth-prompt"
 plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
 
 omarchy plugin disable "$plugin_id" 2>/dev/null || true
-"$plugin_dir/bin/omauth-prompt" remove-gpg
-"$plugin_dir/bin/omauth-prompt" remove-askpass
+omauth-prompt remove-gpg
+omauth-prompt remove-askpass
+omarchy-shell omauth uninstall
 omarchy plugin remove "$plugin_id"
 ```
 
