@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "omauth-prompt",
+  "name": "Omarchy Auth Prompt",
+  "version": "0.1.0",
+  "author": "Arthur Willers",
+  "description": "A theme-aware password prompt for Omarchy shell adapters.",
+  "license": "MIT",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "AuthPrompt.qml"
+  }
+}

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# SSH_ASKPASS adapter. OpenSSH passes its prompt as argv[1].
+
+set -euo pipefail
+umask 077
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../lib/omauth-bridge.sh
+source "$script_dir/../lib/omauth-bridge.sh"
+
+prompt=${1:-Password:}
+timeout_seconds=${OMA_AUTH_TIMEOUT_SECONDS:-120}
+
+omauth_init || exit 1
+trap omauth_cleanup EXIT HUP INT TERM
+
+omauth_begin "SSH authentication" "$prompt" "$prompt" "" "$((timeout_seconds * 1000))" || exit 1
+omauth_wait "$timeout_seconds" || {
+  omauth_cancel
+  exit 1
+}
+
+python3 - "$OMA_AUTH_RESULT_PATH" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as stream:
+        result = json.load(stream)
+except (OSError, ValueError):
+    raise SystemExit(1)
+
+if result.get("status") != "ok":
+    raise SystemExit(1)
+
+sys.stdout.write(str(result.get("secret", "")) + "\n")
+PY

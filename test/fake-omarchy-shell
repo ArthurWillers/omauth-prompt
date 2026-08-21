@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [[ "${1:-}" == "shell" && "${2:-}" == "call" && "${4:-}" == "open" ]]; then
+  response_path=$(jq -r '.responsePath' <<<"$5")
+  if [[ "${OMA_AUTH_TEST_RESULT:-ok}" == "ok" ]]; then
+    printf '{"status":"ok","secret":"test-secret"}\n' >"$response_path"
+  else
+    printf '{"status":"cancel","secret":""}\n' >"$response_path"
+  fi
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "shell" && "${2:-}" == "call" && "${4:-}" == "close" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+printf 'unexpected fake shell call\n' >&2
+exit 1

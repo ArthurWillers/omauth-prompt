@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# Assuan pinentry adapter for GnuPG.
+
+set -euo pipefail
+umask 077
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../lib/omauth-bridge.sh
+source "$script_dir/../lib/omauth-bridge.sh"
+
+readonly CANCELED_ERROR="83886179"
+readonly DEFAULT_TIMEOUT=120
+
+description=""
+prompt="Enter passphrase"
+title="GPG passphrase"
+error_message=""
+timeout_seconds=$DEFAULT_TIMEOUT
+active_request=0
+
+fail() {
+  printf 'ERR %s %s\n' "$CANCELED_ERROR" "$1"
+  exit 0
+}
+
+cleanup() {
+  if (( active_request )); then omauth_cancel; fi
+  omauth_cleanup
+}
+trap cleanup EXIT HUP INT TERM
+
+omauth_init || fail "Omarchy auth prompt is unavailable"
+
+assuan_unescape() {
+  local value="$1"
+  local prefix suffix byte decoded
+
+  while [[ "$value" =~ ^(.*)%([[:xdigit:]]{2})(.*)$ ]]; do
+    prefix=${BASH_REMATCH[1]}
+    byte=${BASH_REMATCH[2]}
+    suffix=${BASH_REMATCH[3]}
+    if [[ "$byte" == "00" ]]; then
+      decoded=" "
+    else
+      printf -v decoded '%b' "\\x$byte"
+    fi
+    value="${prefix}${decoded}${suffix}"
+  done
+
+  printf '%s' "$value"
+}
+
+emit_result() {
+  python3 - "$OMA_AUTH_RESULT_PATH" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as stream:
+        result = json.load(stream)
+except (OSError, ValueError):
+    sys.stdout.write("ERR 83886179 Invalid auth prompt response\n")
+    raise SystemExit(0)
+
+if result.get("status") != "ok":
+    sys.stdout.write("ERR 83886179 canceled\n")
+    raise SystemExit(0)
+
+secret = str(result.get("secret", "")).encode("utf-8")
+secret = secret.replace(b"%", b"%25")
+secret = secret.replace(b"\r", b"%0D")
+secret = secret.replace(b"\n", b"%0A")
+secret = secret.replace(b"\x00", b"%00")
+sys.stdout.buffer.write(b"D " + secret + b"\nOK\n")
+PY
+}
+
+request_pin() {
+  omauth_begin "$title" "$description" "$prompt" "$error_message" "$((timeout_seconds * 1000))" \
+    || fail "Omarchy auth prompt UI is unavailable"
+
+  active_request=1
+  if ! omauth_wait "$timeout_seconds"; then
+    active_request=0
+    omauth_cancel
+    fail "Authentication prompt timed out"
+  fi
+
+  active_request=0
+  emit_result
+  rm -f -- "$OMA_AUTH_RESULT_PATH"
+}
+
+printf 'OK Pleased to meet you\n'
+
+while IFS= read -r line; do
+  command=${line%% *}
+  argument=""
+  [[ "$line" == *" "* ]] && argument=${line#* }
+
+  case "$command" in
+    BYE)
+      printf 'OK closing connection\n'
+      exit 0
+      ;;
+    GETPIN)
+      request_pin
+      ;;
+    CANCEL)
+      omauth_cancel
+      active_request=0
+      printf 'OK\n'
+      ;;
+    SETDESC)
+      description=$(assuan_unescape "$argument")
+      printf 'OK\n'
+      ;;
+    SETPROMPT)
+      prompt=$(assuan_unescape "$argument")
+      printf 'OK\n'
+      ;;
+    SETTITLE)
+      title=$(assuan_unescape "$argument")
+      printf 'OK\n'
+      ;;
+    SETERROR)
+      error_message=$(assuan_unescape "$argument")
+      printf 'OK\n'
+      ;;
+    SETTIMEOUT)
+      if [[ "$argument" =~ ^[0-9]+$ ]] && (( argument > 0 )); then timeout_seconds=$argument; fi
+      printf 'OK\n'
+      ;;
+    RESET)
+      description=""
+      prompt="Enter passphrase"
+      title="GPG passphrase"
+      error_message=""
+      printf 'OK\n'
+      ;;
+    GETINFO)
+      case "$argument" in
+        version) printf 'D 1.0.0\nOK\n' ;;
+        flavor) printf 'D omauth-prompt\nOK\n' ;;
+        pid) printf 'D %s\nOK\n' "$$" ;;
+        *) printf 'OK\n' ;;
+      esac
+      ;;
+    OPTION|SETOK|SETCANCEL|SETNOTOK|SETQUALITYBAR|SETQUALITYBAR_TT|SETKEYINFO|SETREPEAT|SETREPEATPASS|MESSAGE)
+      printf 'OK\n'
+      ;;
+    CONFIRM)
+      fail "Confirmation prompts are not supported"
+      ;;
+    *)
+      printf 'OK\n'
+      ;;
+  esac
+done
