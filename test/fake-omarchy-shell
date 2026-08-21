@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-if [[ "${1:-}" == "shell" && "${2:-}" == "call" && "${4:-}" == "open" ]]; then
-  response_path=$(jq -r '.responsePath' <<<"$5")
+if [[ "${1:-}" == "omauth" && "${2:-}" == "prompt" ]]; then
+  response_path=$(jq -r '.responsePath' <<<"$3")
   if [[ "${OMA_AUTH_TEST_RESULT:-ok}" == "ok" ]]; then
     printf '{"status":"ok","secret":"test-secret"}\n' >"$response_path"
   else
@@ -13,7 +13,7 @@ if [[ "${1:-}" == "shell" && "${2:-}" == "call" && "${4:-}" == "open" ]]; then
   exit 0
 fi
 
-if [[ "${1:-}" == "shell" && "${2:-}" == "call" && "${4:-}" == "close" ]]; then
+if [[ "${1:-}" == "omauth" && "${2:-}" == "cancel" ]]; then
   printf 'ok\n'
   exit 0
 fi
