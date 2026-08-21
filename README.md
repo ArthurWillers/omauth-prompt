@@ -41,8 +41,7 @@ omauth-prompt as your GnuPG pinentry.
 Point GnuPG at the adapter installed with the plugin:
 
 ```bash
-plugin_dir="$HOME/.config/omarchy/plugins/io.github.arthurwillers.omauth-prompt"
-"$plugin_dir/bin/omauth-prompt" setup-gpg
+omarchy-shell omauth setup
 ```
 
 The existing `gpg-agent` starts the adapter on demand. The adapter speaks the
@@ -80,7 +79,7 @@ omarchy restart shell
 Adapters call the already-loaded panel through Omarchy shell IPC:
 
 ```bash
-omarchy-shell shell call io.github.arthurwillers.omauth-prompt open "$payload"
+omarchy-shell omauth prompt "$payload"
 ```
 
 The JSON payload is:
@@ -113,6 +112,9 @@ omarchy plugin list
 omarchy plugin update io.github.arthurwillers.omauth-prompt
 omarchy plugin disable io.github.arthurwillers.omauth-prompt
 omarchy plugin enable io.github.arthurwillers.omauth-prompt
+omarchy-shell omauth setup
+omarchy-shell omauth status
+omarchy-shell omauth remove
 ```
 
 ## Remove
@@ -126,7 +128,7 @@ plugin_id="io.github.arthurwillers.omauth-prompt"
 plugin_dir="$HOME/.config/omarchy/plugins/$plugin_id"
 
 omarchy plugin disable "$plugin_id" 2>/dev/null || true
-"$plugin_dir/bin/omauth-prompt" remove-gpg
+omarchy-shell omauth remove
 omarchy plugin remove "$plugin_id"
 ```
 

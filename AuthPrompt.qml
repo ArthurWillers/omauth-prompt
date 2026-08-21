@@ -23,6 +23,19 @@ Item {
   property int timeoutMs: 120000
 
   readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR")
+  readonly property string pluginDir: root.manifest && root.manifest.__sourceDir
+    ? String(root.manifest.__sourceDir)
+    : ""
+
+  function launchHelper(action) {
+    if (!root.pluginDir) return "plugin path unavailable"
+    var command = Util.shellQuote(root.pluginDir + "/bin/omauth-prompt")
+      + " " + Util.shellQuote(action)
+    Util.execDetached(
+      "omarchy-launch-floating-terminal-with-presentation " + Util.shellQuote(command)
+    )
+    return "started"
+  }
 
   function validResponsePath(path) {
     var value = String(path || "")
@@ -90,6 +103,16 @@ Item {
     if (!root.opened || root.submitted) return
     root.submitted = true
     finish("ok", secret)
+  }
+
+  IpcHandler {
+    target: "omauth"
+
+    function prompt(payloadJson: string): string { return root.open(payloadJson) }
+    function cancel(): string { return root.close() }
+    function setup(): string { return root.launchHelper("setup-gpg") }
+    function remove(): string { return root.launchHelper("remove-gpg") }
+    function status(): string { return root.launchHelper("status") }
   }
 
   Timer {

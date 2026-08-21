@@ -34,8 +34,22 @@ omauth_cleanup() {
 }
 
 omauth_shell_call() {
-  OMARCHY_SHELL_IPC_TIMEOUT=2s \
-    "$OMA_AUTH_SHELL_BINARY" shell call "$OMAUTH_PLUGIN_ID" "$@"
+  local method="$1"
+  shift
+
+  case "$method" in
+    open)
+      OMARCHY_SHELL_IPC_TIMEOUT=2s \
+        "$OMA_AUTH_SHELL_BINARY" omauth prompt "$@"
+      ;;
+    close)
+      OMARCHY_SHELL_IPC_TIMEOUT=2s \
+        "$OMA_AUTH_SHELL_BINARY" omauth cancel
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 omauth_begin() {
